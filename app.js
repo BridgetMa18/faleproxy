@@ -60,7 +60,7 @@ app.post('/fetch', async (req, res) => {
     });
     
     // Process title separately
-    const title = $('title').text().replace(/Yale/g, 'Fale').replace(/yale/g, 'fale');
+    const title = $('title').text().replace(/Yale/g, 'Fale').replace(/yale/g, 'fale').replace(/YALE/g, 'FALE');
     $('title').text(title);
     
     return res.json({ 
