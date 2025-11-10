@@ -31,7 +31,9 @@
       "**/*.js",
       "!**/node_modules/**",
       "!**/coverage/**",
-      "!jest.config.js"
+      "!jest.config.js",
+      "!app.spawn.js",
+      "!**/public/**"
     ],
     "coverageThreshold": {
       "global": {

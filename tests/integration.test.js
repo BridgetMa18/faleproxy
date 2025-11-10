@@ -1,5 +1,7 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const fs = require('fs');
+const path = require('path');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
@@ -15,14 +17,34 @@ describe('Integration Tests', () => {
   beforeAll(async () => {
     // Mock external HTTP requests
     nock.disableNetConnect();
-    nock.enableNetConnect('127.0.0.1');
+    // Allow localhost and 127.0.0.1 for supertest/axios
+    nock.enableNetConnect(/(127\.0\.0\.1|localhost)/);
     
-    // Create a temporary test app file
-    await execAsync('cp app.js app.test.js');
-    await execAsync(`sed -i '' 's/const PORT = 3001/const PORT = ${TEST_PORT}/' app.test.js`);
+    // Create a temporary app file that Jest won't treat as a test
+    await execAsync('cp app.js app.spawn.js');
+    // Set test port in a cross-platform way (avoid sed differences)
+    {
+      const p = path.resolve(__dirname, '..', 'app.spawn.js');
+      let src = fs.readFileSync(p, 'utf8');
+      src = src.replace(/const PORT = \d+/, `const PORT = ${TEST_PORT}`);
+      fs.writeFileSync(p, src, 'utf8');
+    }
+    
+    // Inject sample HTML via file so the spawned server can read it
+    const samplePath = path.resolve(__dirname, 'sample.html');
+    fs.writeFileSync(samplePath, sampleHtmlWithYale, 'utf8');
+    process.env.FALEPROXY_TEST_HTML_FILE = samplePath;
+    // Prepend env injection directly into the spawned app file for reliability
+    const appSpawnPath = path.resolve(__dirname, '..', 'app.spawn.js');
+    const original = fs.readFileSync(appSpawnPath, 'utf8');
+    fs.writeFileSync(
+      appSpawnPath,
+      `process.env.FALEPROXY_TEST_HTML_FILE = ${JSON.stringify(samplePath)};\n` + original,
+      'utf8'
+    );
     
     // Start the test server
-    server = require('child_process').spawn('node', ['app.test.js'], {
+    server = require('child_process').spawn('node', ['app.spawn.js'], {
       detached: true,
       stdio: 'ignore'
     });
@@ -36,7 +58,8 @@ describe('Integration Tests', () => {
     if (server && server.pid) {
       process.kill(-server.pid);
     }
-    await execAsync('rm app.test.js');
+    await execAsync('rm app.spawn.js');
+    await execAsync(`rm -f ${path.resolve(__dirname, 'sample.html')}`);
     nock.cleanAll();
     nock.enableNetConnect();
   });
