@@ -32,9 +32,10 @@ jobs:
       run: npm run test:ci
       
     - name: Upload coverage report
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-report
+        name: coverage-report-${{ matrix.node-version }}-${{ github.run_attempt }}
         path: coverage/
         
   preview:
