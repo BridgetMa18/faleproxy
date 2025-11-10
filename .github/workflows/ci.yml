@@ -5,6 +5,8 @@ on:
     branches:
       - '**'
   pull_request:
+    branches:
+      - '**'
 
 jobs:
   test:
@@ -37,7 +39,7 @@ jobs:
         
   preview:
     needs: test
-    if: ${{ needs.test.result == 'success' && github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
+    if: github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master'
     runs-on: ubuntu-latest
 
     steps:
@@ -66,7 +68,7 @@ jobs:
       run: vercel build --token=${{ env.VERCEL_TOKEN }}
 
     - name: Deploy Project Artifacts to Vercel (preview)
-      id: deploy
+      id: vercel_preview
       env:
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -76,11 +78,12 @@ jobs:
         echo "url=$url" >> $GITHUB_OUTPUT
 
     - name: Preview URL
-      run: echo "Preview URL: ${{ steps.deploy.outputs.url }}"
+      run: |
+        echo "Preview URL: ${{ steps.vercel_preview.outputs.url }}"
 
   deploy:
     needs: test
-    if: ${{ needs.test.result == 'success' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 
     steps:
